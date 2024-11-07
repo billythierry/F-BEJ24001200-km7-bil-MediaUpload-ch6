@@ -28,7 +28,7 @@ class mediaControllers {
                     data: {
                         judul: req.body.judul || req.file.originalname,
                         imageUrl: uploadImage.url,
-                        deskripsi: req.body.deskripsi || "ini adalah gambar" //sebagai default description
+                        deskripsi: req.body.deskripsi || "ini adalah gambar" //kalo ga masukin deskripsi otomatis diisi string ini
                     }
                 })
                 console.log(resultAdd, "===> INI resultAdd");
@@ -43,6 +43,87 @@ class mediaControllers {
 
         } catch (error) {
             console.log(error, '===> INI ERROR addImage');
+            res.status(500).json({
+                message: "gagal menambah image"
+            })
+        }
+    }
+
+    static async getAllImage(req,res){
+        try {
+            const images = await prisma.image.findMany({
+                orderBy: {id: "asc"}
+            });
+
+            res.status(200).json({
+                message: "berhasil menampilkan semua image",
+                data: images
+            })
+        } catch (error) {
+            console.log(error, '===> INI ERROR');
+            res.status(500).json({
+                message: "gagal menampilkan daftar image"
+            })
+        }
+    }
+
+    static async getImageById(req,res){
+        const { imageId } = req.params;
+        try {
+            const images = await prisma.image.findMany({
+                where: { id: Number(imageId) }
+            })
+            res.status(200).json({
+                message: "image ditemukan",
+                data: images
+            });
+        } catch (error) {
+            console.log(error, '===> INI ERROR');
+            res.status(500).json({
+                message: "image tidak ditemukan"
+            })
+        }
+    }
+
+    static async updateImage(req,res){
+        const { imageId } = req.params;
+        const { judul, deskripsi } = req.body;
+
+        try {
+            const updatedImage = await prisma.image.update({
+                where: { id: Number(imageId) },
+                data: {
+                        judul,
+                        deskripsi
+                }
+            })
+            res.status(200).json({
+                message: "image berhasil diupdate",
+                data: updatedImage
+            })
+        } catch (error) {
+            console.log(error, '===> INI ERROR');
+            res.status(500).json({
+                message: "image tidak ditemukan"
+            })
+        }
+    }
+
+    static async deleteImage(req,res){
+        const { imageId } = req.params;
+        try {
+            await prisma.image.delete({
+                where: { id: Number(imageId) }
+            });
+
+            res.status(200).json({
+                message: "Image berhasil dihapus"
+            });
+        } catch (error) {
+            console.log(error, '===> INI ERROR');
+            res.status(500).json({
+                message: "gagal menghapus image"
+            });
         }
     }
 
