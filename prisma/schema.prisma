@@ -18,4 +18,5 @@ model image {
   judul String
   imageUrl String
   deskripsi String 
+  fileId String
 }

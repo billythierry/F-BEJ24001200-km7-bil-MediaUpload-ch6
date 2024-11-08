@@ -7,33 +7,44 @@ class mediaControllers {
 
     static async addImage(req,res){
         try {
-            let stringFile = req.file.buffer.toString('base64');
-
             // Mencegah upload tanpa file / file 0
             if (!req.file || req.length === 0){
-                res.status(400).json({
+                return res.status(400).json({
                     message: 'bad request',
                     error: 'No file uploaded'
                 });
             };
 
+            let stringFile = req.file.buffer.toString('base64');
+
+            const fileName = req.body.judul || req.file.originalname;
+            //Upload Imagekit.io
             const uploadImage = await imageKit.upload({
-                fileName: req.file.originalname,
+                fileName: fileName,
                 file: stringFile
             })
             console.log(uploadImage, "===> INI uploadImage");
             
+            //Upload database prisma postgresql
             if (uploadImage) {
                 const resultAdd = await prisma.image.create({
                     data: {
-                        judul: req.body.judul || req.file.originalname,
+                        judul: fileName,
                         imageUrl: uploadImage.url,
-                        deskripsi: req.body.deskripsi || "ini adalah gambar" //kalo ga masukin deskripsi otomatis diisi string ini
+                        fileId: uploadImage.fileId, 
+                        deskripsi: req.body.deskripsi || "deskripsi tempelan" //kalo ga masukin deskripsi otomatis diisi string ini
                     }
                 })
                 console.log(resultAdd, "===> INI resultAdd");
                 
-                res.status(201).json(resultAdd);
+                res.status(201).json({
+                    message: "image berhasil diupload",
+                    data: {
+                        imagekitName: uploadImage.name,
+                        fileId: uploadImage.fileId, //fileId digunakan utk menghapus image di imagekit.io
+                        prisma: resultAdd
+                    }
+                });
             }else{
                 res.status(400).json({
                     message: 'bad request'
@@ -70,12 +81,18 @@ class mediaControllers {
     static async getImageById(req,res){
         const { imageId } = req.params;
         try {
-            const images = await prisma.image.findMany({
+            const findImage = await prisma.image.findUnique({
                 where: { id: Number(imageId) }
-            })
+            });
+            if (!findImage) {
+                return res.status(400).json({
+                    message: "gagal mencari image"
+                })
+            }
+            
             res.status(200).json({
                 message: "image ditemukan",
-                data: images
+                data: findImage
             });
         } catch (error) {
             console.log(error, '===> INI ERROR');
@@ -90,16 +107,35 @@ class mediaControllers {
         const { judul, deskripsi } = req.body;
 
         try {
+            //Mencari image
+            const findImage = await prisma.image.findUnique({
+                where: { id: Number(imageId) }
+            });
+            if (!findImage) {
+                return res.status(400).json({
+                    message: "gagal mencari image"
+                })
+            }
+
+            //Mengupdate image
+            const updatedImageKit = await imageKit.updateFileDetails(findImage.fileId, {
+                name: judul || findImage.judul,
+            })
+            console.log(updatedImageKit, "===> INI updatedImageKit");
+
             const updatedImage = await prisma.image.update({
                 where: { id: Number(imageId) },
                 data: {
-                        judul,
-                        deskripsi
+                        judul: judul || findImage.judul,
+                        deskripsi: deskripsi
                 }
             })
             res.status(200).json({
                 message: "image berhasil diupdate",
-                data: updatedImage
+                data: {
+                    imagekit: updatedImageKit,
+                    prisma: updatedImage
+                }
             })
         } catch (error) {
             console.log(error, '===> INI ERROR');
@@ -110,8 +146,25 @@ class mediaControllers {
     }
 
     static async deleteImage(req,res){
-        const { imageId } = req.params;
+        const { imageId, fileId } = req.params;
         try {
+            const findImage = await prisma.image.findUnique({
+                where: { id: Number(imageId) }
+            });
+            if (!findImage) {
+                return res.status(400).json({
+                    message: "gagal mencari image"
+                })
+            }
+
+            //Menghapus data di imagekit.io
+            await imageKit.deleteFile(fileId).then(response => {
+                console.log(response);
+            }).catch(error => {
+                console.log(error);
+            });
+
+            //Menghapus data di prisma
             await prisma.image.delete({
                 where: { id: Number(imageId) }
             });
