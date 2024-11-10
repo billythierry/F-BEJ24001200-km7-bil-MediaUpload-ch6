@@ -10,6 +10,10 @@ app.use(express.urlencoded({ extended: true })) // for parsing application/x-www
 
 app.use('/', router);
 
+app.get('/', (req,res) => {
+    res.send('HOREEE DEPLOYYY');
+});
+
 
 app.listen(port, (req, res) => {
     console.log(`Port ${port} sedang berjalan`);
