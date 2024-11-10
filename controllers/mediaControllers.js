@@ -66,6 +66,12 @@ class mediaControllers {
                 orderBy: {id: "asc"}
             });
 
+            if (images.length === 0) {
+                return res.status(400).json({
+                    message: "Tidak ada image dalam database"
+                });
+            };
+
             res.status(200).json({
                 message: "berhasil menampilkan semua image",
                 data: images
